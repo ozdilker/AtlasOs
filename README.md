@@ -43,7 +43,7 @@ pnpm start -- --help
 
 | Command     | Status        |
 | ----------- | ------------- |
-| `atlas init` | Registered (Sprint-002+) |
+| `atlas init <project-name>` | Implemented |
 
 ## Project Structure
 
