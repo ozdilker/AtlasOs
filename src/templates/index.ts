@@ -17,6 +17,10 @@ export {
   TemplateRenderer,
 } from './engine/index.js';
 export {
+  MissingTemplateVariableError,
+  TemplateInterpolator,
+} from './interpolation/index.js';
+export {
   DuplicateTemplateError,
   InMemoryTemplateRegistry,
   TemplateRegistry,

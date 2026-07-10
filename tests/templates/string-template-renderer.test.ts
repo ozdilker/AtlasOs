@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { TemplateContext } from '../../src/templates/context/template-context.js';
 import { StringTemplateRenderer } from '../../src/templates/engine/string-template-renderer.js';
+import { TemplateInterpolator } from '../../src/templates/interpolation/template-interpolator.js';
 import type { StringTemplate } from '../../src/templates/types/string-template.js';
 
 function createStringTemplate(content: string): StringTemplate {
@@ -15,40 +16,32 @@ function createStringTemplate(content: string): StringTemplate {
 
 function createContext(): TemplateContext {
   return {
-    getVariable: () => 'ignored-value',
+    getVariable: () => 'MyProject',
     hasVariable: () => true,
   };
 }
 
 describe('StringTemplateRenderer', () => {
-  it('returns the original template content', () => {
-    const renderer = new StringTemplateRenderer();
-    const template = createStringTemplate('# Hello\n\nAtlas CLI');
+  it('delegates rendering to the interpolator', () => {
+    const interpolator = new TemplateInterpolator();
+    const interpolateSpy = vi.spyOn(interpolator, 'interpolate');
+    const renderer = new StringTemplateRenderer(interpolator);
+    const template = createStringTemplate('# {{projectName}}');
+    const context = createContext();
 
-    const result = renderer.render(template, createContext());
+    const result = renderer.render(template, context);
 
-    expect(result).toBe('# Hello\n\nAtlas CLI');
+    expect(interpolateSpy).toHaveBeenCalledOnce();
+    expect(interpolateSpy).toHaveBeenCalledWith('# {{projectName}}', context);
+    expect(result).toBe('# MyProject');
   });
 
-  it('supports empty content', () => {
-    const renderer = new StringTemplateRenderer();
+  it('supports empty content through the interpolator', () => {
+    const renderer = new StringTemplateRenderer(new TemplateInterpolator());
     const template = createStringTemplate('');
 
     const result = renderer.render(template, createContext());
 
     expect(result).toBe('');
-  });
-
-  it('accepts context but ignores it', () => {
-    const renderer = new StringTemplateRenderer();
-    const template = createStringTemplate('static content');
-    const context: TemplateContext = {
-      getVariable: (key) => `value-for-${key}`,
-      hasVariable: () => true,
-    };
-
-    const result = renderer.render(template, context);
-
-    expect(result).toBe('static content');
   });
 });

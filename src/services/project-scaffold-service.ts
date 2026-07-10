@@ -1,3 +1,4 @@
+import { README_TEMPLATE_ID } from '../templates/catalog/readme-template.js';
 import type { TemplateCatalog } from '../templates/catalog/template-catalog.js';
 import { ProjectTemplateContext } from '../templates/context/project-template-context.js';
 import type { TemplateEngine } from '../templates/engine/template-engine.js';
@@ -22,5 +23,11 @@ export class ProjectScaffoldService {
       context: new ProjectTemplateContext(projectName),
       engine: this.engine,
     };
+  }
+
+  renderReadme(projectName: string): string {
+    const prepared = this.prepare(projectName);
+
+    return prepared.engine.render(README_TEMPLATE_ID, prepared.context);
   }
 }
