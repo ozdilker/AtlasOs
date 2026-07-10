@@ -1,6 +1,8 @@
 # Atlas CLI
 
-Command-line interface for Atlas OS.
+Command-line interface for Atlas OS — a private, AI-native Product Operating System for building and managing software products.
+
+> Build once. Scale forever.
 
 **Version:** `v0.1.0-alpha`
 
