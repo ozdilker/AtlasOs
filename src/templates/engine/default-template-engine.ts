@@ -4,12 +4,12 @@ import { TemplateEngine } from './template-engine.js';
 
 export class DefaultTemplateEngine extends TemplateEngine {
   override render(templateId: string, context: TemplateContext): string {
-    const template = this.registry.get(templateId);
+    const registration = this.registry.get(templateId);
 
-    if (template === undefined) {
+    if (registration === undefined) {
       throw new TemplateNotFoundError(templateId);
     }
 
-    return this.renderer.render(template, context);
+    return this.renderer.render(registration.template, context);
   }
 }

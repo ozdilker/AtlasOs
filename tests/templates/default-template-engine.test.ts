@@ -3,6 +3,7 @@ import type { TemplateContext } from '../../src/templates/context/template-conte
 import { DefaultTemplateEngine } from '../../src/templates/engine/default-template-engine.js';
 import { TemplateNotFoundError } from '../../src/templates/engine/template-engine-error.js';
 import { TemplateRenderer } from '../../src/templates/engine/template-renderer.js';
+import type { TemplateRegistration } from '../../src/templates/registration/template-registration.js';
 import { TemplateRegistry } from '../../src/templates/registry/template-registry.js';
 import type { Template } from '../../src/templates/types/template.js';
 
@@ -10,6 +11,16 @@ const template: Template = {
   metadata: {
     id: 'readme',
     name: 'README Template',
+  },
+};
+
+const registration: TemplateRegistration = {
+  id: 'readme',
+  template,
+  metadata: {
+    version: '1.0.0',
+    category: 'documentation',
+    tags: ['readme'],
   },
 };
 
@@ -34,7 +45,7 @@ describe('DefaultTemplateEngine', () => {
     const registry = new MockTemplateRegistry();
     const renderer = new MockTemplateRenderer();
 
-    registry.get.mockReturnValue(template);
+    registry.get.mockReturnValue(registration);
     renderer.render.mockReturnValue('rendered output');
 
     const engine = new DefaultTemplateEngine(registry, renderer);
@@ -61,7 +72,7 @@ describe('DefaultTemplateEngine', () => {
     const registry = new MockTemplateRegistry();
     const renderer = new MockTemplateRenderer();
 
-    registry.get.mockReturnValue(template);
+    registry.get.mockReturnValue(registration);
     renderer.render.mockReturnValue('rendered output');
 
     const engine = new DefaultTemplateEngine(registry, renderer);
@@ -75,7 +86,7 @@ describe('DefaultTemplateEngine', () => {
     const registry = new MockTemplateRegistry();
     const renderer = new MockTemplateRenderer();
 
-    registry.get.mockReturnValue(template);
+    registry.get.mockReturnValue(registration);
     renderer.render.mockReturnValue('rendered output');
 
     const engine = new DefaultTemplateEngine(registry, renderer);

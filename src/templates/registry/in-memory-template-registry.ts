@@ -1,29 +1,27 @@
-import type { Template } from '../types/template.js';
+import type { TemplateRegistration } from '../registration/template-registration.js';
 import { DuplicateTemplateError } from './template-registry-error.js';
 import { TemplateRegistry } from './template-registry.js';
 
 export class InMemoryTemplateRegistry extends TemplateRegistry {
-  private readonly templates = new Map<string, Template>();
+  private readonly registrations = new Map<string, TemplateRegistration>();
 
-  register(template: Template): void {
-    const templateId = template.metadata.id;
-
-    if (this.templates.has(templateId)) {
-      throw new DuplicateTemplateError(templateId);
+  register(registration: TemplateRegistration): void {
+    if (this.registrations.has(registration.id)) {
+      throw new DuplicateTemplateError(registration.id);
     }
 
-    this.templates.set(templateId, template);
+    this.registrations.set(registration.id, registration);
   }
 
-  get(id: string): Template | undefined {
-    return this.templates.get(id);
+  get(id: string): TemplateRegistration | undefined {
+    return this.registrations.get(id);
   }
 
   has(id: string): boolean {
-    return this.templates.has(id);
+    return this.registrations.has(id);
   }
 
-  list(): readonly Template[] {
-    return [...this.templates.values()];
+  list(): readonly TemplateRegistration[] {
+    return [...this.registrations.values()];
   }
 }
