@@ -12,6 +12,6 @@ describe('Atlas CLI', () => {
   it('exposes version 0.1.0-alpha', () => {
     const program = createProgram();
 
-    expect(program.version()).toBe('0.1.0-alpha');
+    expect(program.version()).toBe('0.2.0-alpha');
   });
 });

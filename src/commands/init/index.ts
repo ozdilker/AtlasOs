@@ -1,8 +1,13 @@
 import type { Command } from 'commander';
-import { InitProjectError, initProject } from '../../services/init-project.js';
+import { createInitProjectService } from '../../services/create-init-project-service.js';
+import { InitProjectError } from '../../services/init-project-error.js';
+import type { InitProjectService } from '../../services/init-project-service.js';
 import { validateProjectName } from '../../validators/project-name.js';
 
-export function registerInitCommand(program: Command): void {
+export function registerInitCommand(
+  program: Command,
+  createService: (baseDirectory?: string) => InitProjectService = createInitProjectService,
+): void {
   program
     .command('init')
     .description('Initialize a new Atlas project')
@@ -17,7 +22,8 @@ export function registerInitCommand(program: Command): void {
       }
 
       try {
-        const result = await initProject(projectName);
+        const service = createService();
+        const result = await service.execute(projectName);
 
         console.log(`Successfully initialized Atlas project: ${projectName}`);
         console.log('');

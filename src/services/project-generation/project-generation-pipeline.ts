@@ -1,24 +1,30 @@
-import { README_TEMPLATE_ID } from '../../templates/catalog/readme-template.js';
-import {
-  PROJECT_DIRECTORY_PATHS,
-  PROJECT_EMPTY_ROOT_FILES,
-  PROJECT_ROOT_FILES,
-} from '../init-project.js';
+import type { ProjectValidator } from '../../diagnostics/project-validator.js';
+import { EMPTY_VALIDATION_RESULT } from '../../diagnostics/validation-result.js';
+import type { TemplateContext } from '../../templates/context/template-context.js';
+import type { TemplateEngine } from '../../templates/engine/template-engine.js';
+import { PROJECT_DIRECTORY_PATHS } from '../init-project.js';
 import type { ProjectScaffoldService } from '../project-scaffold-service.js';
 import type { GeneratedFile } from './generated-file.js';
 import type { GenerationPlan, PlannedFile } from './generation-plan.js';
 import type { GenerationResult } from './generation-result.js';
+import {
+  PROJECT_EMPTY_FILES,
+  PROJECT_GENERATED_FILE_PATHS,
+  TEMPLATED_PROJECT_FILES,
+} from './project-generated-files.js';
 
 const DEFAULT_ENCODING = 'utf-8';
 
 const PLANNED_FILES: readonly PlannedFile[] = [
-  {
-    relativePath: 'README.md',
-    encoding: DEFAULT_ENCODING,
-    renderStrategy: 'template',
-    templateId: README_TEMPLATE_ID,
-  },
-  ...PROJECT_EMPTY_ROOT_FILES.map(
+  ...TEMPLATED_PROJECT_FILES.map(
+    (file): PlannedFile => ({
+      relativePath: file.relativePath,
+      encoding: DEFAULT_ENCODING,
+      renderStrategy: 'template',
+      templateId: file.templateId,
+    }),
+  ),
+  ...PROJECT_EMPTY_FILES.map(
     (relativePath): PlannedFile => ({
       relativePath,
       encoding: DEFAULT_ENCODING,
@@ -28,22 +34,31 @@ const PLANNED_FILES: readonly PlannedFile[] = [
 ];
 
 export class ProjectGenerationPipeline {
-  constructor(private readonly scaffoldService: ProjectScaffoldService) {}
+  constructor(
+    private readonly scaffoldService: ProjectScaffoldService,
+    private readonly validator: ProjectValidator,
+  ) {}
 
   generate(projectName: string): GenerationResult {
     const plan = this.createPlan(projectName);
     const prepared = this.scaffoldService.prepare(projectName);
-    const readmeContent = prepared.engine.render(README_TEMPLATE_ID, prepared.context);
+    const generatedFiles = this.buildGeneratedFiles(prepared.engine, prepared.context);
 
-    const generatedFiles = this.buildGeneratedFiles(readmeContent);
-
-    return {
+    const generationResult: GenerationResult = {
       projectName,
       plan,
       generatedFiles,
       directories: [...PROJECT_DIRECTORY_PATHS],
       warnings: [],
       errors: [],
+      validation: EMPTY_VALIDATION_RESULT,
+    };
+
+    const validation = this.validator.validate(generationResult);
+
+    return {
+      ...generationResult,
+      validation,
     };
   }
 
@@ -55,11 +70,21 @@ export class ProjectGenerationPipeline {
     };
   }
 
-  private buildGeneratedFiles(readmeContent: string): GeneratedFile[] {
-    return PROJECT_ROOT_FILES.map((relativePath) => ({
-      relativePath,
-      content: relativePath === 'README.md' ? readmeContent : '',
+  private buildGeneratedFiles(engine: TemplateEngine, context: TemplateContext): GeneratedFile[] {
+    const templatedFiles = TEMPLATED_PROJECT_FILES.map((file) => ({
+      relativePath: file.relativePath,
+      content: engine.render(file.templateId, context),
       encoding: DEFAULT_ENCODING,
     }));
+
+    const emptyFiles = PROJECT_EMPTY_FILES.map((relativePath) => ({
+      relativePath,
+      content: '',
+      encoding: DEFAULT_ENCODING,
+    }));
+
+    return [...templatedFiles, ...emptyFiles].sort((left, right) =>
+      left.relativePath.localeCompare(right.relativePath),
+    );
   }
 }

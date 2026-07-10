@@ -1,4 +1,10 @@
 export {
+  CHANGELOG_TEMPLATE_ID,
+  ChangelogTemplate,
+  GOVERNANCE_INDEX_TEMPLATE_ID,
+  GovernanceIndexTemplate,
+  PROJECT_DASHBOARD_TEMPLATE_ID,
+  ProjectDashboardTemplate,
   README_TEMPLATE_ID,
   ReadmeTemplate,
   TemplateCatalog,

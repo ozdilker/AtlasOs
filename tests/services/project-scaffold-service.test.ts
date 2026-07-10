@@ -33,7 +33,7 @@ describe('ProjectScaffoldService', () => {
     service.prepare('MyProject');
 
     expect(registry.has(README_TEMPLATE_ID)).toBe(true);
-    expect(registry.list()).toHaveLength(1);
+    expect(registry.list()).toHaveLength(4);
   });
 
   it('creates a project template context', () => {
