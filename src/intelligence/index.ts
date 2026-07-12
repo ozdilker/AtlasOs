@@ -7,3 +7,4 @@ export {
   ValidationRule,
   type ValidationEngineResult,
 } from './validation/index.js';
+export { README_MISSING_RULE_CODE, ReadmeExistsRule } from './rules/index.js';
