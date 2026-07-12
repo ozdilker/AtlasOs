@@ -10,6 +10,8 @@ export {
 export {
   GOVERNANCE_README_MISSING_RULE_CODE,
   GovernanceReadmeExistsRule,
+  PROJECT_DASHBOARD_MISSING_RULE_CODE,
+  ProjectDashboardExistsRule,
   README_MISSING_RULE_CODE,
   ReadmeExistsRule,
 } from './rules/index.js';
