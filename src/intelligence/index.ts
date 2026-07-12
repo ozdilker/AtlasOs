@@ -7,7 +7,12 @@ export {
   ValidationRule,
   type ValidationEngineResult,
 } from './validation/index.js';
-export { README_MISSING_RULE_CODE, ReadmeExistsRule } from './rules/index.js';
+export {
+  GOVERNANCE_README_MISSING_RULE_CODE,
+  GovernanceReadmeExistsRule,
+  README_MISSING_RULE_CODE,
+  ReadmeExistsRule,
+} from './rules/index.js';
 export {
   GENERATION_DEFAULT_PROFILE_ID,
   generationDefaultProfile,
