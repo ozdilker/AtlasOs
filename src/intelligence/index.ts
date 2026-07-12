@@ -8,3 +8,8 @@ export {
   type ValidationEngineResult,
 } from './validation/index.js';
 export { README_MISSING_RULE_CODE, ReadmeExistsRule } from './rules/index.js';
+export {
+  GENERATION_DEFAULT_PROFILE_ID,
+  generationDefaultProfile,
+  type ValidationProfile,
+} from './profiles/index.js';
