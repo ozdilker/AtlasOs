@@ -25,3 +25,4 @@ export {
   generationDefaultProfile,
   type ValidationProfile,
 } from './profiles/index.js';
+export { Reporter, TerminalReporter } from './reporters/index.js';
