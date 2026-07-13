@@ -1,4 +1,5 @@
 import { ChangelogExistsRule } from '../rules/changelog-exists-rule.js';
+import { GitIgnoreExistsRule } from '../rules/gitignore-exists-rule.js';
 import { GovernanceReadmeExistsRule } from '../rules/governance-readme-exists-rule.js';
 import { ProjectDashboardExistsRule } from '../rules/project-dashboard-exists-rule.js';
 import { ReadmeExistsRule } from '../rules/readme-exists-rule.js';
@@ -15,5 +16,6 @@ export const generationDefaultProfile: ValidationProfile = {
     new GovernanceReadmeExistsRule(),
     new ProjectDashboardExistsRule(),
     new ChangelogExistsRule(),
+    new GitIgnoreExistsRule(),
   ],
 };

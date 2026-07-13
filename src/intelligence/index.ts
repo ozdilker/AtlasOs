@@ -10,6 +10,8 @@ export {
 export {
   CHANGELOG_MISSING_RULE_CODE,
   ChangelogExistsRule,
+  GITIGNORE_MISSING_RULE_CODE,
+  GitIgnoreExistsRule,
   GOVERNANCE_README_MISSING_RULE_CODE,
   GovernanceReadmeExistsRule,
   PROJECT_DASHBOARD_MISSING_RULE_CODE,
