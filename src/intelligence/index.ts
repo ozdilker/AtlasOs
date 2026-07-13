@@ -26,3 +26,4 @@ export {
   type ValidationProfile,
 } from './profiles/index.js';
 export { Reporter, TerminalReporter } from './reporters/index.js';
+export { createDoctorResult, DoctorService, type DoctorResult } from './doctor/index.js';
