@@ -5,6 +5,7 @@ import { Command } from 'commander';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createProgram } from '../../src/cli.js';
 import { registerDoctorCommand } from '../../src/commands/doctor/index.js';
+import type { AtlasConfigLoader } from '../../src/config/atlas-config-loader.js';
 import { DiagnosticSeverity } from '../../src/diagnostics/diagnostic-severity.js';
 import { createDoctorService } from '../../src/intelligence/doctor/create-doctor-service.js';
 import type { DoctorResult } from '../../src/intelligence/doctor/doctor-result.js';
@@ -39,6 +40,30 @@ async function createValidProjectDirectory(): Promise<string> {
   await writeFile(join(rootDirectory, '.gitignore'), '');
 
   return rootDirectory;
+}
+
+async function writeAtlasConfig(directory: string, config: unknown): Promise<void> {
+  await writeFile(join(directory, 'atlas.config.json'), JSON.stringify(config, null, 2), 'utf8');
+}
+
+function registerDoctorCommandWithDefaults(
+  program: Command,
+  overrides: {
+    createService?: (reporter: Reporter) => DoctorService;
+    createReporterRegistry?: () => ReporterRegistry;
+    createConfigLoader?: () => AtlasConfigLoader;
+    writeStdout?: (output: string) => boolean;
+    writeStderr?: (output: string) => boolean;
+  } = {},
+): void {
+  registerDoctorCommand(
+    program,
+    overrides.createService,
+    overrides.createReporterRegistry,
+    overrides.createConfigLoader,
+    overrides.writeStdout,
+    overrides.writeStderr,
+  );
 }
 
 const tempDirectories: string[] = [];
@@ -80,12 +105,117 @@ describe('doctor command', () => {
     expect(run).toHaveBeenCalledWith('.');
   });
 
+  it('uses terminal output when config is missing', async () => {
+    const rootDirectory = await createValidProjectDirectory();
+    const writeStdout = vi.fn(() => true);
+    const program = new Command();
+    registerDoctorCommandWithDefaults(program, {
+      createService: createDoctorService,
+      writeStdout,
+    });
+
+    program.parse(['doctor', rootDirectory], { from: 'user' });
+
+    expect(String(writeStdout.mock.calls[0]?.[0])).toContain('Atlas Doctor Report');
+    expect(process.exitCode).toBe(0);
+  });
+
+  it('uses the configured doctor format when no CLI format is provided', async () => {
+    const rootDirectory = await createValidProjectDirectory();
+    await writeAtlasConfig(rootDirectory, {
+      doctor: {
+        format: 'json',
+      },
+    });
+    const writeStdout = vi.fn(() => true);
+    const program = new Command();
+    registerDoctorCommandWithDefaults(program, {
+      createService: createDoctorService,
+      writeStdout,
+    });
+
+    program.parse(['doctor', rootDirectory], { from: 'user' });
+
+    const report = JSON.parse(String(writeStdout.mock.calls[0]?.[0])) as {
+      schemaVersion: string;
+      status: string;
+    };
+
+    expect(report.schemaVersion).toBe('1.0');
+    expect(report.status).toBe('pass');
+  });
+
+  it('lets CLI format override configured doctor format', async () => {
+    const rootDirectory = await createValidProjectDirectory();
+    await writeAtlasConfig(rootDirectory, {
+      doctor: {
+        format: 'json',
+      },
+    });
+    const writeStdout = vi.fn(() => true);
+    const program = new Command();
+    registerDoctorCommandWithDefaults(program, {
+      createService: createDoctorService,
+      writeStdout,
+    });
+
+    program.parse(['doctor', rootDirectory, '--format', 'terminal'], { from: 'user' });
+
+    expect(String(writeStdout.mock.calls[0]?.[0])).toContain('Atlas Doctor Report');
+    expect(String(writeStdout.mock.calls[0]?.[0])).not.toContain('"schemaVersion"');
+  });
+
+  it('reports an unknown format from configuration', async () => {
+    const rootDirectory = await createValidProjectDirectory();
+    await writeAtlasConfig(rootDirectory, {
+      doctor: {
+        format: 'markdown',
+      },
+    });
+    const writeStderr = vi.fn(() => true);
+    const program = new Command();
+    registerDoctorCommandWithDefaults(program, {
+      createService: createDoctorService,
+      writeStderr,
+    });
+
+    program.parse(['doctor', rootDirectory], { from: 'user' });
+
+    expect(writeStderr).toHaveBeenCalledWith('Unknown reporter format: markdown\n');
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('resolves the reporter from ReporterRegistry using the effective format', async () => {
+    const rootDirectory = await createValidProjectDirectory();
+    await writeAtlasConfig(rootDirectory, {
+      doctor: {
+        format: 'json',
+      },
+    });
+    const registry = createDefaultReporterRegistry();
+    const getSpy = vi.spyOn(registry, 'get');
+    const writeStdout = vi.fn(() => true);
+    const program = new Command();
+    registerDoctorCommandWithDefaults(program, {
+      createService: createDoctorService,
+      createReporterRegistry: () => registry,
+      writeStdout,
+    });
+
+    program.parse(['doctor', rootDirectory], { from: 'user' });
+
+    expect(getSpy).toHaveBeenCalledWith('json');
+  });
+
   it('writes the terminal report to stdout by default', () => {
     const run = vi.fn(() => createDoctorResult());
     const service = { run } as unknown as DoctorService;
     const writeStdout = vi.fn(() => true);
     const program = new Command();
-    registerDoctorCommand(program, () => service, createDefaultReporterRegistry, writeStdout);
+    registerDoctorCommandWithDefaults(program, {
+      createService: () => service,
+      writeStdout,
+    });
 
     program.parse(['doctor'], { from: 'user' });
 
@@ -99,7 +229,11 @@ describe('doctor command', () => {
     const getSpy = vi.spyOn(registry, 'get');
     const writeStdout = vi.fn(() => true);
     const program = new Command();
-    registerDoctorCommand(program, createDoctorService, () => registry, writeStdout);
+    registerDoctorCommandWithDefaults(program, {
+      createService: createDoctorService,
+      createReporterRegistry: () => registry,
+      writeStdout,
+    });
 
     program.parse(['doctor', rootDirectory, '--format', 'terminal'], { from: 'user' });
 
@@ -112,7 +246,10 @@ describe('doctor command', () => {
     const rootDirectory = await createValidProjectDirectory();
     const writeStdout = vi.fn(() => true);
     const program = new Command();
-    registerDoctorCommand(program, createDoctorService, createDefaultReporterRegistry, writeStdout);
+    registerDoctorCommandWithDefaults(program, {
+      createService: createDoctorService,
+      writeStdout,
+    });
 
     program.parse(['doctor', rootDirectory, '--format', 'json'], { from: 'user' });
 
@@ -131,13 +268,11 @@ describe('doctor command', () => {
     const service = { run } as unknown as DoctorService;
     const writeStderr = vi.fn(() => true);
     const program = new Command();
-    registerDoctorCommand(
-      program,
-      () => service,
-      createDefaultReporterRegistry,
-      vi.fn(() => true),
+    registerDoctorCommandWithDefaults(program, {
+      createService: () => service,
+      writeStdout: vi.fn(() => true),
       writeStderr,
-    );
+    });
 
     program.parse(['doctor', '--format', 'markdown'], { from: 'user' });
 
@@ -157,11 +292,10 @@ describe('doctor command', () => {
       register: vi.fn(),
     } as unknown as ReporterRegistry;
     const program = new Command();
-    registerDoctorCommand(
-      program,
-      () => service,
-      () => registry,
-    );
+    registerDoctorCommandWithDefaults(program, {
+      createService: () => service,
+      createReporterRegistry: () => registry,
+    });
 
     program.parse(['doctor', '--format', 'terminal'], { from: 'user' });
 
@@ -200,7 +334,10 @@ describe('doctor command', () => {
     await rm(join(rootDirectory, 'README.md'));
     const writeStdout = vi.fn(() => true);
     const program = new Command();
-    registerDoctorCommand(program, createDoctorService, createDefaultReporterRegistry, writeStdout);
+    registerDoctorCommandWithDefaults(program, {
+      createService: createDoctorService,
+      writeStdout,
+    });
 
     program.parse(['doctor', rootDirectory, '--format', 'json'], { from: 'user' });
 
