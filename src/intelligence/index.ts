@@ -26,7 +26,15 @@ export {
   generationDefaultProfile,
   type ValidationProfile,
 } from './profiles/index.js';
-export { Reporter, TerminalReporter } from './reporters/index.js';
+export {
+  createDefaultReporterRegistry,
+  DuplicateReporterError,
+  JsonReporter,
+  Reporter,
+  ReporterFormat,
+  ReporterRegistry,
+  TerminalReporter,
+} from './reporters/index.js';
 export { createDoctorResult, DoctorService, type DoctorResult } from './doctor/index.js';
 export { createDoctorService } from './doctor/create-doctor-service.js';
 export { NotImplementedError } from './errors/not-implemented-error.js';
