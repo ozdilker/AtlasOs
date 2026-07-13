@@ -3,9 +3,10 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
-import { afterEach } from 'vitest';
-import { createDefaultProjectValidator } from '../../../src/diagnostics/create-default-project-validator.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { GenerationInspector } from '../../../src/intelligence/inspectors/generation-inspector.js';
+import { generationDefaultProfile } from '../../../src/intelligence/profiles/generation-default-profile.js';
+import { ValidationEngine } from '../../../src/intelligence/validation/validation-engine.js';
 import { FileService } from '../../../src/services/file/file-service.js';
 import { FilesystemWriter } from '../../../src/services/file/filesystem-writer.js';
 import { PROJECT_DIRECTORY_PATHS } from '../../../src/services/init-project.js';
@@ -35,15 +36,30 @@ async function createTempDirectory(): Promise<string> {
   return directory;
 }
 
-function createPipeline(): ProjectGenerationPipeline {
+function createPipelineComponents() {
   const registry = new InMemoryTemplateRegistry();
   const catalog = new TemplateCatalog();
   const interpolator = new TemplateInterpolator();
   const renderer = new StringTemplateRenderer(interpolator);
   const engine = new DefaultTemplateEngine(registry, renderer);
   const scaffoldService = new ProjectScaffoldService(catalog, registry, engine);
+  const generationInspector = new GenerationInspector();
+  const validationEngine = new ValidationEngine(generationDefaultProfile.rules);
 
-  return new ProjectGenerationPipeline(scaffoldService, createDefaultProjectValidator());
+  return { scaffoldService, generationInspector, validationEngine };
+}
+
+function createPipeline(
+  generationInspector?: GenerationInspector,
+  validationEngine?: ValidationEngine,
+): ProjectGenerationPipeline {
+  const components = createPipelineComponents();
+
+  return new ProjectGenerationPipeline(
+    components.scaffoldService,
+    generationInspector ?? components.generationInspector,
+    validationEngine ?? components.validationEngine,
+  );
 }
 
 describe('ProjectGenerationPipeline', () => {
@@ -144,6 +160,95 @@ Atlas Governance Documents.`);
     expect(result.validation.diagnostics).toEqual([]);
     expect(result.validation.hasErrors).toBe(false);
     expect(result.validation.hasWarnings).toBe(false);
+    expect(Object.keys(result.validation).sort()).toEqual(
+      ['diagnostics', 'hasErrors', 'hasWarnings'].sort(),
+    );
+  });
+
+  it('executes ValidationEngine through GenerationInspector during generation', () => {
+    const { scaffoldService, generationInspector, validationEngine } = createPipelineComponents();
+    const inspectSpy = vi.spyOn(generationInspector, 'inspect');
+    const validateSpy = vi.spyOn(validationEngine, 'validate');
+    const pipeline = new ProjectGenerationPipeline(
+      scaffoldService,
+      generationInspector,
+      validationEngine,
+    );
+
+    pipeline.generate('MyProject');
+
+    expect(inspectSpy).toHaveBeenCalledOnce();
+    expect(validateSpy).toHaveBeenCalledOnce();
+  });
+
+  it('executes all five generation-default rules', () => {
+    const { scaffoldService, generationInspector, validationEngine } = createPipelineComponents();
+    const validateSpy = vi.spyOn(validationEngine, 'validate');
+    const pipeline = new ProjectGenerationPipeline(
+      scaffoldService,
+      generationInspector,
+      validationEngine,
+    );
+
+    pipeline.generate('MyProject');
+
+    expect(validateSpy.mock.results[0]?.value.rulesExecuted).toBe(5);
+  });
+
+  it('fails validation when README.md is missing from the inspection subject', () => {
+    const { scaffoldService, validationEngine } = createPipelineComponents();
+    const generationInspector = new GenerationInspector();
+    vi.spyOn(generationInspector, 'inspect').mockImplementation((input) => {
+      const subject = new GenerationInspector().inspect(input);
+
+      return {
+        ...subject,
+        files: subject.files.filter((file) => file.relativePath !== 'README.md'),
+      };
+    });
+    const pipeline = new ProjectGenerationPipeline(
+      scaffoldService,
+      generationInspector,
+      validationEngine,
+    );
+
+    const result = pipeline.generate('MyProject');
+
+    expect(result.validation.hasErrors).toBe(true);
+    expect(result.validation.diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'README_MISSING',
+        path: 'README.md',
+      }),
+    ]);
+  });
+
+  it('fails validation when PROJECT-DASHBOARD.md is missing from the inspection subject', () => {
+    const { scaffoldService, validationEngine } = createPipelineComponents();
+    const generationInspector = new GenerationInspector();
+    vi.spyOn(generationInspector, 'inspect').mockImplementation((input) => {
+      const subject = new GenerationInspector().inspect(input);
+
+      return {
+        ...subject,
+        files: subject.files.filter((file) => file.relativePath !== 'PROJECT-DASHBOARD.md'),
+      };
+    });
+    const pipeline = new ProjectGenerationPipeline(
+      scaffoldService,
+      generationInspector,
+      validationEngine,
+    );
+
+    const result = pipeline.generate('MyProject');
+
+    expect(result.validation.hasErrors).toBe(true);
+    expect(result.validation.diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'PROJECT_DASHBOARD_MISSING',
+        path: 'PROJECT-DASHBOARD.md',
+      }),
+    ]);
   });
 
   it('contains no filesystem dependency in pipeline source', () => {

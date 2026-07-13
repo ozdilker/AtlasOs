@@ -1,4 +1,7 @@
 import { createDefaultProjectValidator } from '../diagnostics/create-default-project-validator.js';
+import { GenerationInspector } from '../intelligence/inspectors/generation-inspector.js';
+import { generationDefaultProfile } from '../intelligence/profiles/generation-default-profile.js';
+import { ValidationEngine } from '../intelligence/validation/validation-engine.js';
 import { TemplateCatalog } from '../templates/catalog/template-catalog.js';
 import { DefaultTemplateEngine } from '../templates/engine/default-template-engine.js';
 import { StringTemplateRenderer } from '../templates/engine/string-template-renderer.js';
@@ -19,9 +22,17 @@ export function createInitProjectService(
   const renderer = new StringTemplateRenderer(interpolator);
   const engine = new DefaultTemplateEngine(registry, renderer);
   const scaffoldService = new ProjectScaffoldService(catalog, registry, engine);
-  const pipeline = new ProjectGenerationPipeline(scaffoldService, createDefaultProjectValidator());
+  const generationInspector = new GenerationInspector();
+  const validationEngine = new ValidationEngine(generationDefaultProfile.rules);
+  const pipeline = new ProjectGenerationPipeline(
+    scaffoldService,
+    generationInspector,
+    validationEngine,
+  );
   const writer = new FilesystemWriter();
   const fileService = new FileService(writer);
 
   return new InitProjectService(pipeline, fileService, writer, baseDirectory);
 }
+
+export { createDefaultProjectValidator };

@@ -2,7 +2,9 @@ import { access, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createDefaultProjectValidator } from '../../../src/diagnostics/create-default-project-validator.js';
+import { GenerationInspector } from '../../../src/intelligence/inspectors/generation-inspector.js';
+import { generationDefaultProfile } from '../../../src/intelligence/profiles/generation-default-profile.js';
+import { ValidationEngine } from '../../../src/intelligence/validation/validation-engine.js';
 import { FileService } from '../../../src/services/file/file-service.js';
 import { FilesystemWriter } from '../../../src/services/file/filesystem-writer.js';
 import { PROJECT_DIRECTORY_PATHS, PROJECT_ROOT_FILES } from '../../../src/services/init-project.js';
@@ -35,8 +37,10 @@ function createPipeline(): ProjectGenerationPipeline {
   const renderer = new StringTemplateRenderer(interpolator);
   const engine = new DefaultTemplateEngine(registry, renderer);
   const scaffoldService = new ProjectScaffoldService(catalog, registry, engine);
+  const generationInspector = new GenerationInspector();
+  const validationEngine = new ValidationEngine(generationDefaultProfile.rules);
 
-  return new ProjectGenerationPipeline(scaffoldService, createDefaultProjectValidator());
+  return new ProjectGenerationPipeline(scaffoldService, generationInspector, validationEngine);
 }
 
 function createFileService(): FileService {

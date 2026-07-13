@@ -3,6 +3,7 @@ export { InspectionOrigin } from './models/index.js';
 export { GenerationInspector, Inspector } from './inspectors/index.js';
 export {
   createValidationEngineResult,
+  mapValidationEngineResultToValidationResult,
   ValidationEngine,
   ValidationRule,
   type ValidationEngineResult,

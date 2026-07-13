@@ -1,5 +1,7 @@
-import type { ProjectValidator } from '../../diagnostics/project-validator.js';
 import { EMPTY_VALIDATION_RESULT } from '../../diagnostics/validation-result.js';
+import type { GenerationInspector } from '../../intelligence/inspectors/generation-inspector.js';
+import { mapValidationEngineResultToValidationResult } from '../../intelligence/validation/map-to-validation-result.js';
+import type { ValidationEngine } from '../../intelligence/validation/validation-engine.js';
 import type { TemplateContext } from '../../templates/context/template-context.js';
 import type { TemplateEngine } from '../../templates/engine/template-engine.js';
 import { PROJECT_DIRECTORY_PATHS } from '../init-project.js';
@@ -7,11 +9,7 @@ import type { ProjectScaffoldService } from '../project-scaffold-service.js';
 import type { GeneratedFile } from './generated-file.js';
 import type { GenerationPlan, PlannedFile } from './generation-plan.js';
 import type { GenerationResult } from './generation-result.js';
-import {
-  PROJECT_EMPTY_FILES,
-  PROJECT_GENERATED_FILE_PATHS,
-  TEMPLATED_PROJECT_FILES,
-} from './project-generated-files.js';
+import { PROJECT_EMPTY_FILES, TEMPLATED_PROJECT_FILES } from './project-generated-files.js';
 
 const DEFAULT_ENCODING = 'utf-8';
 
@@ -36,7 +34,8 @@ const PLANNED_FILES: readonly PlannedFile[] = [
 export class ProjectGenerationPipeline {
   constructor(
     private readonly scaffoldService: ProjectScaffoldService,
-    private readonly validator: ProjectValidator,
+    private readonly generationInspector: GenerationInspector,
+    private readonly validationEngine: ValidationEngine,
   ) {}
 
   generate(projectName: string): GenerationResult {
@@ -54,7 +53,9 @@ export class ProjectGenerationPipeline {
       validation: EMPTY_VALIDATION_RESULT,
     };
 
-    const validation = this.validator.validate(generationResult);
+    const inspectionSubject = this.generationInspector.inspect(generationResult);
+    const validationEngineResult = this.validationEngine.validate(inspectionSubject);
+    const validation = mapValidationEngineResultToValidationResult(validationEngineResult);
 
     return {
       ...generationResult,
