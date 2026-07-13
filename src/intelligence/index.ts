@@ -30,4 +30,4 @@ export { Reporter, TerminalReporter } from './reporters/index.js';
 export { createDoctorResult, DoctorService, type DoctorResult } from './doctor/index.js';
 export { createDoctorService } from './doctor/create-doctor-service.js';
 export { NotImplementedError } from './errors/not-implemented-error.js';
-export { FilesystemWalker, type FilesystemEntry } from './filesystem/index.js';
+export { FilesystemWalker, FilesystemReader, type FilesystemEntry } from './filesystem/index.js';

@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Command } from 'commander';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createProgram } from '../../src/cli.js';
@@ -18,10 +21,16 @@ function createDoctorResult(overrides: Partial<DoctorResult> = {}): DoctorResult
   };
 }
 
+const tempDirectories: string[] = [];
+
+afterEach(async () => {
+  process.exitCode = 0;
+  await Promise.all(
+    tempDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })),
+  );
+});
+
 describe('doctor command', () => {
-  afterEach(() => {
-    process.exitCode = 0;
-  });
   it('registers the doctor command on the CLI program', () => {
     const program = createProgram();
 
@@ -91,18 +100,25 @@ describe('doctor command', () => {
     expect(process.exitCode).toBe(1);
   });
 
-  it('surfaces NotImplementedError from the default doctor service', () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('runs the default doctor service against a valid project directory', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'atlas-doctor-command-'));
+    tempDirectories.push(rootDirectory);
+    await writeFile(join(rootDirectory, 'README.md'), '# Project');
+    await writeFile(join(rootDirectory, 'CHANGELOG.md'), '# Changelog');
+    await writeFile(join(rootDirectory, 'PROJECT-DASHBOARD.md'), '# Dashboard');
+    await mkdir(join(rootDirectory, 'docs', '00-governance'), { recursive: true });
+    await writeFile(join(rootDirectory, 'docs', '00-governance', 'README.md'), '# Governance');
+    await writeFile(join(rootDirectory, '.gitignore'), '');
+
+    const writeStdout = vi.fn(() => true);
     const program = new Command();
-    registerDoctorCommand(program, createDoctorService);
+    registerDoctorCommand(program, createDoctorService, writeStdout);
 
-    program.parse(['doctor'], { from: 'user' });
+    program.parse(['doctor', rootDirectory], { from: 'user' });
 
-    expect(errorSpy).toHaveBeenCalledWith(
-      'Error: FilesystemInspector is not yet implemented. atlas doctor requires on-disk project inspection (SPEC-001 MS-07).',
-    );
-    expect(process.exitCode).toBe(1);
-
-    errorSpy.mockRestore();
+    expect(writeStdout).toHaveBeenCalledOnce();
+    expect(String(writeStdout.mock.calls[0]?.[0])).toContain('Atlas Doctor Report');
+    expect(String(writeStdout.mock.calls[0]?.[0])).toContain('Status:\nPASS');
+    expect(process.exitCode).toBe(0);
   });
 });
