@@ -9,6 +9,13 @@ import { DiagnosticSeverity } from '../../src/diagnostics/diagnostic-severity.js
 import { createDoctorService } from '../../src/intelligence/doctor/create-doctor-service.js';
 import type { DoctorResult } from '../../src/intelligence/doctor/doctor-result.js';
 import type { DoctorService } from '../../src/intelligence/doctor/doctor-service.js';
+import { ReporterFormat } from '../../src/intelligence/reporters/reporter-format.js';
+import {
+  type ReporterRegistry,
+  createDefaultReporterRegistry,
+} from '../../src/intelligence/reporters/reporter-registry.js';
+import type { Reporter } from '../../src/intelligence/reporters/reporter.js';
+import { TerminalReporter } from '../../src/intelligence/reporters/terminal-reporter.js';
 import { createValidationEngineResult } from '../../src/intelligence/validation/validation-engine-result.js';
 
 function createDoctorResult(overrides: Partial<DoctorResult> = {}): DoctorResult {
@@ -19,6 +26,19 @@ function createDoctorResult(overrides: Partial<DoctorResult> = {}): DoctorResult
     validationResult,
     ...overrides,
   };
+}
+
+async function createValidProjectDirectory(): Promise<string> {
+  const rootDirectory = await mkdtemp(join(tmpdir(), 'atlas-doctor-command-'));
+  tempDirectories.push(rootDirectory);
+  await writeFile(join(rootDirectory, 'README.md'), '# Project');
+  await writeFile(join(rootDirectory, 'CHANGELOG.md'), '# Changelog');
+  await writeFile(join(rootDirectory, 'PROJECT-DASHBOARD.md'), '# Dashboard');
+  await mkdir(join(rootDirectory, 'docs', '00-governance'), { recursive: true });
+  await writeFile(join(rootDirectory, 'docs', '00-governance', 'README.md'), '# Governance');
+  await writeFile(join(rootDirectory, '.gitignore'), '');
+
+  return rootDirectory;
 }
 
 const tempDirectories: string[] = [];
@@ -60,12 +80,12 @@ describe('doctor command', () => {
     expect(run).toHaveBeenCalledWith('.');
   });
 
-  it('writes the report to stdout and sets exit code 0 when there are no errors', () => {
+  it('writes the terminal report to stdout by default', () => {
     const run = vi.fn(() => createDoctorResult());
     const service = { run } as unknown as DoctorService;
     const writeStdout = vi.fn(() => true);
     const program = new Command();
-    registerDoctorCommand(program, () => service, writeStdout);
+    registerDoctorCommand(program, () => service, createDefaultReporterRegistry, writeStdout);
 
     program.parse(['doctor'], { from: 'user' });
 
@@ -73,10 +93,85 @@ describe('doctor command', () => {
     expect(process.exitCode).toBe(0);
   });
 
+  it('resolves the terminal reporter from ReporterRegistry when format is terminal', async () => {
+    const rootDirectory = await createValidProjectDirectory();
+    const registry = createDefaultReporterRegistry();
+    const getSpy = vi.spyOn(registry, 'get');
+    const writeStdout = vi.fn(() => true);
+    const program = new Command();
+    registerDoctorCommand(program, createDoctorService, () => registry, writeStdout);
+
+    program.parse(['doctor', rootDirectory, '--format', 'terminal'], { from: 'user' });
+
+    expect(getSpy).toHaveBeenCalledWith(ReporterFormat.Terminal);
+    expect(String(writeStdout.mock.calls[0]?.[0])).toContain('Atlas Doctor Report');
+    expect(process.exitCode).toBe(0);
+  });
+
+  it('writes JSON output when format is json', async () => {
+    const rootDirectory = await createValidProjectDirectory();
+    const writeStdout = vi.fn(() => true);
+    const program = new Command();
+    registerDoctorCommand(program, createDoctorService, createDefaultReporterRegistry, writeStdout);
+
+    program.parse(['doctor', rootDirectory, '--format', 'json'], { from: 'user' });
+
+    const report = JSON.parse(String(writeStdout.mock.calls[0]?.[0])) as {
+      schemaVersion: string;
+      status: string;
+    };
+
+    expect(report.schemaVersion).toBe('1.0');
+    expect(report.status).toBe('pass');
+    expect(process.exitCode).toBe(0);
+  });
+
+  it('prints an error and exits with code 1 for an unknown format', () => {
+    const run = vi.fn(() => createDoctorResult());
+    const service = { run } as unknown as DoctorService;
+    const writeStderr = vi.fn(() => true);
+    const program = new Command();
+    registerDoctorCommand(
+      program,
+      () => service,
+      createDefaultReporterRegistry,
+      vi.fn(() => true),
+      writeStderr,
+    );
+
+    program.parse(['doctor', '--format', 'markdown'], { from: 'user' });
+
+    expect(writeStderr).toHaveBeenCalledWith('Unknown reporter format: markdown\n');
+    expect(run).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('looks up the reporter from ReporterRegistry using the requested format', () => {
+    const run = vi.fn(() => createDoctorResult());
+    const service = { run } as unknown as DoctorService;
+    const reporter = new TerminalReporter();
+    const registry = {
+      get: vi.fn(() => reporter),
+      has: vi.fn(),
+      list: vi.fn(() => []),
+      register: vi.fn(),
+    } as unknown as ReporterRegistry;
+    const program = new Command();
+    registerDoctorCommand(
+      program,
+      () => service,
+      () => registry,
+    );
+
+    program.parse(['doctor', '--format', 'terminal'], { from: 'user' });
+
+    expect(registry.get).toHaveBeenCalledWith('terminal');
+  });
+
   it('sets exit code 1 when validation reports errors', () => {
     const run = vi.fn(() =>
       createDoctorResult({
-        report: 'Atlas Doctor Report\n\nStatus:\nFAIL',
+        report: JSON.stringify({ status: 'fail' }),
         validationResult: createValidationEngineResult(
           [
             {
@@ -95,30 +190,22 @@ describe('doctor command', () => {
     const program = new Command();
     registerDoctorCommand(program, () => service);
 
-    program.parse(['doctor'], { from: 'user' });
+    program.parse(['doctor', '--format', 'json'], { from: 'user' });
 
     expect(process.exitCode).toBe(1);
   });
 
-  it('runs the default doctor service against a valid project directory', async () => {
-    const rootDirectory = await mkdtemp(join(tmpdir(), 'atlas-doctor-command-'));
-    tempDirectories.push(rootDirectory);
-    await writeFile(join(rootDirectory, 'README.md'), '# Project');
-    await writeFile(join(rootDirectory, 'CHANGELOG.md'), '# Changelog');
-    await writeFile(join(rootDirectory, 'PROJECT-DASHBOARD.md'), '# Dashboard');
-    await mkdir(join(rootDirectory, 'docs', '00-governance'), { recursive: true });
-    await writeFile(join(rootDirectory, 'docs', '00-governance', 'README.md'), '# Governance');
-    await writeFile(join(rootDirectory, '.gitignore'), '');
-
+  it('preserves validation exit codes when using the json reporter', async () => {
+    const rootDirectory = await createValidProjectDirectory();
+    await rm(join(rootDirectory, 'README.md'));
     const writeStdout = vi.fn(() => true);
     const program = new Command();
-    registerDoctorCommand(program, createDoctorService, writeStdout);
+    registerDoctorCommand(program, createDoctorService, createDefaultReporterRegistry, writeStdout);
 
-    program.parse(['doctor', rootDirectory], { from: 'user' });
+    program.parse(['doctor', rootDirectory, '--format', 'json'], { from: 'user' });
 
-    expect(writeStdout).toHaveBeenCalledOnce();
-    expect(String(writeStdout.mock.calls[0]?.[0])).toContain('Atlas Doctor Report');
-    expect(String(writeStdout.mock.calls[0]?.[0])).toContain('Status:\nPASS');
-    expect(process.exitCode).toBe(0);
+    const report = JSON.parse(String(writeStdout.mock.calls[0]?.[0])) as { status: string };
+    expect(report.status).toBe('fail');
+    expect(process.exitCode).toBe(1);
   });
 });
