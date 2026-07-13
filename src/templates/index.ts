@@ -41,3 +41,4 @@ export {
   resolveTemplateDirectory,
   type TemplateDirectoryResolution,
 } from './config/index.js';
+export { FilesystemTemplate, FilesystemTemplateLoader } from './filesystem/index.js';
