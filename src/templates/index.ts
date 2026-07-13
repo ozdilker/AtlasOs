@@ -37,3 +37,7 @@ export type {
 } from './registration/index.js';
 export type { StringTemplate, Template, TemplateMetadata } from './types/index.js';
 export { isStringTemplate } from './types/index.js';
+export {
+  resolveTemplateDirectory,
+  type TemplateDirectoryResolution,
+} from './config/index.js';
