@@ -8,6 +8,8 @@ export {
   type ValidationEngineResult,
 } from './validation/index.js';
 export {
+  CHANGELOG_MISSING_RULE_CODE,
+  ChangelogExistsRule,
   GOVERNANCE_README_MISSING_RULE_CODE,
   GovernanceReadmeExistsRule,
   PROJECT_DASHBOARD_MISSING_RULE_CODE,

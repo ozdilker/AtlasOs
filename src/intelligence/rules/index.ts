@@ -1,3 +1,4 @@
+export { CHANGELOG_MISSING_RULE_CODE, ChangelogExistsRule } from './changelog-exists-rule.js';
 export {
   GovernanceReadmeExistsRule,
   GOVERNANCE_README_MISSING_RULE_CODE,

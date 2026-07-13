@@ -3,6 +3,7 @@ import {
   GENERATION_DEFAULT_PROFILE_ID,
   generationDefaultProfile,
 } from '../../src/intelligence/profiles/generation-default-profile.js';
+import { ChangelogExistsRule } from '../../src/intelligence/rules/changelog-exists-rule.js';
 import { GovernanceReadmeExistsRule } from '../../src/intelligence/rules/governance-readme-exists-rule.js';
 import { ProjectDashboardExistsRule } from '../../src/intelligence/rules/project-dashboard-exists-rule.js';
 import { ReadmeExistsRule } from '../../src/intelligence/rules/readme-exists-rule.js';
@@ -17,11 +18,12 @@ describe('generationDefaultProfile', () => {
     expect(generationDefaultProfile.name).toBe('Generation Default');
   });
 
-  it('registers ReadmeExistsRule, GovernanceReadmeExistsRule, and ProjectDashboardExistsRule', () => {
-    expect(generationDefaultProfile.rules).toHaveLength(3);
+  it('registers all generation-default rules', () => {
+    expect(generationDefaultProfile.rules).toHaveLength(4);
     expect(generationDefaultProfile.rules[0]).toBeInstanceOf(ReadmeExistsRule);
     expect(generationDefaultProfile.rules[1]).toBeInstanceOf(GovernanceReadmeExistsRule);
     expect(generationDefaultProfile.rules[2]).toBeInstanceOf(ProjectDashboardExistsRule);
+    expect(generationDefaultProfile.rules[3]).toBeInstanceOf(ChangelogExistsRule);
   });
 
   it('preserves rule ordering', () => {
@@ -29,11 +31,12 @@ describe('generationDefaultProfile', () => {
       'ReadmeExistsRule',
       'GovernanceReadmeExistsRule',
       'ProjectDashboardExistsRule',
+      'ChangelogExistsRule',
     ]);
   });
 
   it('exposes rules as a readonly collection', () => {
     expect(Object.keys(generationDefaultProfile)).toEqual(['id', 'name', 'description', 'rules']);
-    expect([...generationDefaultProfile.rules]).toHaveLength(3);
+    expect([...generationDefaultProfile.rules]).toHaveLength(4);
   });
 });
