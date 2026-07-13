@@ -8,7 +8,65 @@ The format is milestone-based. Versions follow [Semantic Versioning](https://sem
 
 ## Unreleased
 
-### Sprint-010 — Release Readiness (MS-06)
+_No changes yet._
+
+---
+
+## v0.3.0-beta
+
+**Milestone:** MS-07 — Project Intelligence
+
+### Project Intelligence
+
+- Introduced `src/intelligence/` horizontal kernel layer per [ADR-002](docs/09-adr/ADR-002-project-intelligence-architecture.md)
+- `GenerationInspector` maps in-memory `GenerationResult` to `InspectionSubject`
+- `FilesystemInspector` with `FilesystemWalker` and `FilesystemReader` for on-disk inspection
+- `ValidationEngine` with profile-based rule execution
+- `generation-default` profile with five existence rules (`readme-exists`, `governance-readme-exists`, `project-dashboard-exists`, `changelog-exists`, `gitignore-exists`)
+- Pipeline delegates validation to Project Intelligence; `GenerationResult.validation` retained for compatibility
+
+### Doctor
+
+- `DoctorService` orchestrates inspect → validate → report
+- `atlas doctor [path]` CLI command with filesystem-backed validation
+- Exit code `1` when validation reports errors; `0` otherwise
+
+### Reporter
+
+- `TerminalReporter` — human-readable diagnostic report
+- `JsonReporter` — structured JSON output (`schemaVersion` `1.0`)
+- `ReporterRegistry` with `createDefaultReporterRegistry()`
+- `atlas doctor --format terminal|json` with config default from `doctor.format`
+
+### Configuration
+
+- `atlas.config.json` support via `AtlasConfigLoader` with deep-merge defaults
+- `doctor.format` wired into doctor command format resolution
+- `templates.directory` wired into init template resolution
+
+### External Templates
+
+- `resolveTemplateDirectory()` resolves configured template path relative to project root
+- `FilesystemTemplateLoader` loads `*.md` files as `TemplateRegistration` entries
+- `registerInitTemplates()` integrates external templates into `atlas init` (replace policy; fallback to built-in on missing directory or load failure)
+
+### Init UX
+
+- Post-init validation summary displayed after success output (`formatInitValidationSummary`)
+- Validation output is informational only — init does not fail on validation errors
+
+### Documentation
+
+- Synchronized README, ARCHITECTURE, ROADMAP, CHANGELOG, and RELEASE_CHECKLIST for beta readiness
+- MS-07 marked complete; MS-08 Developer Experience introduced as planned
+
+---
+
+## v0.2.0-alpha
+
+**Milestone:** MS-06 — Release Readiness
+
+### Sprint-010 — Release Readiness
 
 - Added end-to-end tests for the full `atlas init` flow (CLI → pipeline → validation → FileService → filesystem)
 - Added CLI subprocess smoke tests
@@ -24,6 +82,12 @@ The format is milestone-based. Versions follow [Semantic Versioning](https://sem
 - Integrated post-generation validation into `ProjectGenerationPipeline`
 - Attached `validation` to `GenerationResult`
 
+---
+
+## v0.1.0-alpha
+
+**Milestone:** MS-01 through MS-05
+
 ### Sprint-008 — Governance Templates
 
 - Added `ChangelogTemplate`, `ProjectDashboardTemplate`, and `GovernanceIndexTemplate`
@@ -37,7 +101,7 @@ The format is milestone-based. Versions follow [Semantic Versioning](https://sem
 - Migrated `atlas init` to `InitProjectService` orchestration
 - Removed legacy `initProject()` filesystem orchestration
 - Removed `generate-readme.ts` in favor of Template Engine rendering
-- Preserved existing CLI UX: success summary, validation, error handling
+- Preserved existing CLI UX: success summary, error handling
 
 ### Sprint-006 — FileService
 
@@ -75,11 +139,7 @@ The format is milestone-based. Versions follow [Semantic Versioning](https://sem
 - Implemented `StringTemplateRenderer` and `DefaultTemplateEngine`
 - Added `StringTemplate` type and `TemplateRegistration` contracts
 
----
-
-## v0.1.0-alpha
-
-**Milestone:** MS-01 Bootstrap (Sprint-001)
+### Sprint-001 — Bootstrap
 
 - Initial Atlas CLI repository bootstrap
 - Node.js 22, TypeScript 5, pnpm, Commander.js, Biome, Vitest toolchain
