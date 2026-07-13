@@ -39,6 +39,8 @@ export type { StringTemplate, Template, TemplateMetadata } from './types/index.j
 export { isStringTemplate } from './types/index.js';
 export {
   resolveTemplateDirectory,
+  registerInitTemplates,
+  type RegisterInitTemplatesDependencies,
   type TemplateDirectoryResolution,
 } from './config/index.js';
 export { FilesystemTemplate, FilesystemTemplateLoader } from './filesystem/index.js';

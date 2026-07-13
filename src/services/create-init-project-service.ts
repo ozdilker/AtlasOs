@@ -1,8 +1,8 @@
-import { createDefaultProjectValidator } from '../diagnostics/create-default-project-validator.js';
 import { GenerationInspector } from '../intelligence/inspectors/generation-inspector.js';
 import { generationDefaultProfile } from '../intelligence/profiles/generation-default-profile.js';
 import { ValidationEngine } from '../intelligence/validation/validation-engine.js';
 import { TemplateCatalog } from '../templates/catalog/template-catalog.js';
+import { registerInitTemplates } from '../templates/config/init-template-registration.js';
 import { DefaultTemplateEngine } from '../templates/engine/default-template-engine.js';
 import { StringTemplateRenderer } from '../templates/engine/string-template-renderer.js';
 import { TemplateInterpolator } from '../templates/interpolation/template-interpolator.js';
@@ -18,6 +18,9 @@ export function createInitProjectService(
 ): InitProjectService {
   const registry = new InMemoryTemplateRegistry();
   const catalog = new TemplateCatalog();
+
+  registerInitTemplates(registry, baseDirectory, { catalog });
+
   const interpolator = new TemplateInterpolator();
   const renderer = new StringTemplateRenderer(interpolator);
   const engine = new DefaultTemplateEngine(registry, renderer);
@@ -34,5 +37,3 @@ export function createInitProjectService(
 
   return new InitProjectService(pipeline, fileService, writer, baseDirectory);
 }
-
-export { createDefaultProjectValidator };

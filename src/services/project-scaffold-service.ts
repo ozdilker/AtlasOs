@@ -17,7 +17,9 @@ export class ProjectScaffoldService {
   ) {}
 
   prepare(projectName: string): PreparedProjectScaffold {
-    this.catalog.registerDefaults(this.registry);
+    if (this.registry.list().length === 0) {
+      this.catalog.registerDefaults(this.registry);
+    }
 
     return {
       context: new ProjectTemplateContext(projectName),
