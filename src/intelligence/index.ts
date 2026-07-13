@@ -1,6 +1,7 @@
 export type { InspectionFile, InspectionSubject } from './models/index.js';
 export { InspectionOrigin } from './models/index.js';
 export { GenerationInspector, Inspector } from './inspectors/index.js';
+export { FilesystemInspector } from './inspectors/filesystem-inspector.js';
 export {
   createValidationEngineResult,
   mapValidationEngineResultToValidationResult,
@@ -27,3 +28,5 @@ export {
 } from './profiles/index.js';
 export { Reporter, TerminalReporter } from './reporters/index.js';
 export { createDoctorResult, DoctorService, type DoctorResult } from './doctor/index.js';
+export { createDoctorService } from './doctor/create-doctor-service.js';
+export { NotImplementedError } from './errors/not-implemented-error.js';

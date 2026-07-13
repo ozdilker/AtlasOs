@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { registerDoctorCommand } from './commands/doctor/index.js';
 import { registerInitCommand } from './commands/init/index.js';
 import { version } from './version.js';
 
@@ -8,6 +9,7 @@ export function createProgram(): Command {
   program.name('atlas').description('Atlas CLI').version(version);
 
   registerInitCommand(program);
+  registerDoctorCommand(program);
 
   return program;
 }

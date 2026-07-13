@@ -58,12 +58,12 @@ function runCli(
 }
 
 describe('CLI smoke', () => {
-  it('exposes init command and version from createProgram', () => {
+  it('exposes init and doctor commands and version from createProgram', () => {
     const program = createProgram();
 
     expect(program.name()).toBe('atlas');
     expect(program.version()).toBe('0.2.0-alpha');
-    expect(program.commands.map((command) => command.name())).toEqual(['init']);
+    expect(program.commands.map((command) => command.name())).toEqual(['init', 'doctor']);
   });
 
   it('prints help output from the CLI entrypoint', async () => {
@@ -72,6 +72,7 @@ describe('CLI smoke', () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain('Usage: atlas');
     expect(stdout).toContain('init');
+    expect(stdout).toContain('doctor');
   });
 
   it('initializes a project through the CLI entrypoint subprocess', async () => {
