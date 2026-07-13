@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerInitCommand } from '../../src/commands/init/index.js';
+import { DiagnosticSeverity } from '../../src/diagnostics/diagnostic-severity.js';
+import { createValidationResult } from '../../src/diagnostics/validation-result.js';
 import { createInitProjectService } from '../../src/services/create-init-project-service.js';
 import type {
   InitProjectExecutionResult,
@@ -16,6 +18,7 @@ import { PROJECT_DIRECTORY_PATHS } from '../../src/services/init-project.js';
 const tempDirectories: string[] = [];
 
 afterEach(async () => {
+  process.exitCode = 0;
   await Promise.all(
     tempDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })),
   );
@@ -41,6 +44,7 @@ describe('init command', () => {
           '.gitignore',
         ],
         filesSkipped: [],
+        validation: createValidationResult([]),
       }),
     );
 
@@ -104,5 +108,120 @@ Initial release.`);
     expect(initProjectSource).not.toMatch(/node:fs/);
     expect(initCommandSource).not.toMatch(/initProject\(/);
     expect(initCommandSource).toContain('InitProjectService');
+    expect(initCommandSource).toContain('formatInitValidationSummary');
+  });
+
+  it('prints validation success after project creation', async () => {
+    const execute = vi.fn(
+      async (): Promise<InitProjectExecutionResult> => ({
+        projectName: 'MyProject',
+        directories: [...PROJECT_DIRECTORY_PATHS],
+        filesCreated: ['README.md'],
+        filesSkipped: [],
+        validation: createValidationResult([]),
+      }),
+    );
+
+    const service = { execute } as unknown as InitProjectService;
+    const program = new Command();
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    registerInitCommand(program, () => service);
+
+    await program.parseAsync(['init', 'MyProject'], { from: 'user' });
+
+    expect(logSpy).toHaveBeenCalledWith(
+      '------------------------------------\n✔ Validation passed.',
+    );
+    logSpy.mockRestore();
+  });
+
+  it('prints validation warnings without changing exit code', async () => {
+    const execute = vi.fn(
+      async (): Promise<InitProjectExecutionResult> => ({
+        projectName: 'MyProject',
+        directories: [...PROJECT_DIRECTORY_PATHS],
+        filesCreated: ['README.md'],
+        filesSkipped: [],
+        validation: createValidationResult([
+          {
+            code: 'TEMPLATE_WARNING',
+            severity: DiagnosticSeverity.Warning,
+            message: 'Template uses deprecated placeholder.',
+            path: 'README.md',
+          },
+        ]),
+      }),
+    );
+
+    const service = { execute } as unknown as InitProjectService;
+    const program = new Command();
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    registerInitCommand(program, () => service);
+
+    await program.parseAsync(['init', 'MyProject'], { from: 'user' });
+
+    expect(process.exitCode).not.toBe(1);
+    expect(logSpy).toHaveBeenCalledWith(
+      [
+        '------------------------------------',
+        'Warnings:',
+        '',
+        'README.md: Template uses deprecated placeholder.',
+      ].join('\n'),
+    );
+    logSpy.mockRestore();
+  });
+
+  it('prints validation errors without failing init or changing exit code', async () => {
+    const execute = vi.fn(
+      async (): Promise<InitProjectExecutionResult> => ({
+        projectName: 'MyProject',
+        directories: [...PROJECT_DIRECTORY_PATHS],
+        filesCreated: ['README.md'],
+        filesSkipped: [],
+        validation: createValidationResult([
+          {
+            code: 'README_MISSING',
+            severity: DiagnosticSeverity.Error,
+            message: 'README.md is required but missing.',
+            path: 'README.md',
+          },
+        ]),
+      }),
+    );
+
+    const service = { execute } as unknown as InitProjectService;
+    const program = new Command();
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    registerInitCommand(program, () => service);
+
+    await program.parseAsync(['init', 'MyProject'], { from: 'user' });
+
+    expect(execute).toHaveBeenCalledWith('MyProject');
+    expect(process.exitCode).not.toBe(1);
+    expect(logSpy).toHaveBeenCalledWith(
+      [
+        '------------------------------------',
+        'Errors:',
+        '',
+        'README.md: README.md is required but missing.',
+      ].join('\n'),
+    );
+    logSpy.mockRestore();
+  });
+
+  it('prints validation success for a real init run', async () => {
+    const baseDirectory = await createTempDirectory();
+    const service = createInitProjectService(baseDirectory);
+    const program = new Command();
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    registerInitCommand(program, () => service);
+
+    await program.parseAsync(['init', 'MyProject'], { from: 'user' });
+
+    expect(logSpy).toHaveBeenCalledWith(
+      '------------------------------------\n✔ Validation passed.',
+    );
+    logSpy.mockRestore();
   });
 });

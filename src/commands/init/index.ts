@@ -3,6 +3,7 @@ import { createInitProjectService } from '../../services/create-init-project-ser
 import { InitProjectError } from '../../services/init-project-error.js';
 import type { InitProjectService } from '../../services/init-project-service.js';
 import { validateProjectName } from '../../validators/project-name.js';
+import { formatInitValidationSummary } from './format-init-validation-summary.js';
 
 export function registerInitCommand(
   program: Command,
@@ -47,6 +48,9 @@ export function registerInitCommand(
             console.log(`  ${file}`);
           }
         }
+
+        console.log('');
+        console.log(formatInitValidationSummary(result.validation));
       } catch (error) {
         const message =
           error instanceof InitProjectError

@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import type { ValidationResult } from '../diagnostics/validation-result.js';
 import type { FileService } from './file/file-service.js';
 import type { FilesystemWriter } from './file/filesystem-writer.js';
 import { InitProjectError } from './init-project-error.js';
@@ -9,6 +10,7 @@ export type InitProjectExecutionResult = {
   readonly directories: readonly string[];
   readonly filesCreated: readonly string[];
   readonly filesSkipped: readonly string[];
+  readonly validation: ValidationResult;
 };
 
 export class InitProjectService {
@@ -38,6 +40,7 @@ export class InitProjectService {
       directories: generationResult.directories,
       filesCreated: writeResult.createdFiles,
       filesSkipped: writeResult.skippedFiles,
+      validation: generationResult.validation,
     };
   }
 }
